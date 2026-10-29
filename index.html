@@ -63,15 +63,18 @@
             box-sizing: border-box; 
             -webkit-tap-highlight-color: transparent; 
         }
-        body {
+        html, body {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
+            height: 100dvh; /* Force exact viewport height */
             background-color: #141218; /* M3 Background */
             color: #E6E1E5; /* M3 On-Background */
             user-select: none;
             -webkit-user-select: none;
-            overflow-x: hidden;
-            overscroll-behavior-y: none;
+            overflow: hidden; /* Prevent scrolling on mobile */
+            touch-action: none;
         }
 
         .material-symbols-rounded {
@@ -82,9 +85,9 @@
         .m3e-slider {
             -webkit-appearance: none;
             width: 100%;
-            height: 16px;
+            height: 12px;
             background: #4A4458; /* Secondary Container */
-            border-radius: 9999px;
+            border-radius: 999px;
             outline: none;
             position: relative;
             cursor: pointer;
@@ -92,9 +95,9 @@
         
         .m3e-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 32px;
-            border-radius: 8px;
+            width: 14px;
+            height: 26px;
+            border-radius: 6px;
             background: #D0BCFF; /* Primary */
             cursor: pointer;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -102,11 +105,10 @@
         }
 
         .m3e-slider:active::-webkit-slider-thumb {
-            transform: scale(1.1) scaleX(1.3);
+            transform: scale(1.2);
         }
 
         .m3e-slider.tertiary::-webkit-slider-thumb { background: #EFB8C8; }
-        .m3e-slider.tertiary:active::-webkit-slider-thumb { transform: scale(1.1) scaleX(1.3); }
 
         /* State Layers (Ripple Simulation) */
         .m3-state-layer {
@@ -135,144 +137,140 @@
         }
     </style>
 </head>
-<body class="selection:bg-m3-primary selection:text-m3-onPrimary">
+<body class="selection:bg-m3-primary selection:text-m3-onPrimary flex flex-col h-[100dvh] p-2 sm:p-4 gap-2 sm:gap-3">
 
-    <div class="max-w-6xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-screen content-start">
-        
-        <!-- HEADER (M3E App Bar / Hero Card) -->
-        <header class="lg:col-span-12 bg-m3-surface rounded-[32px] p-5 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 shadow-md transition-shadow">
-            <div class="flex items-center gap-5 w-full md:w-auto">
-                <div class="w-16 h-16 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-[24px] flex items-center justify-center shrink-0 shadow-sm">
-                    <span class="material-symbols-rounded text-3xl">graphic_eq</span>
-                </div>
-                <div>
-                    <h1 class="font-display text-2xl md:text-3xl font-medium tracking-tight text-m3-primary">Harmonic Engine</h1>
-                    <p class="text-sm font-medium text-m3-outline">Material 3 Expressive UI</p>
-                </div>
+    <!-- HEADER (Compact for 1-screen Mobile) -->
+    <header class="bg-m3-surface rounded-[20px] sm:rounded-[28px] px-3 py-2 sm:px-6 sm:py-3 flex justify-between items-center gap-2 shrink-0 shadow-sm">
+        <div class="flex items-center gap-2 sm:gap-4">
+            <div class="w-9 h-9 sm:w-12 sm:h-12 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-[14px] sm:rounded-[18px] flex items-center justify-center shrink-0">
+                <span class="material-symbols-rounded text-xl sm:text-2xl">graphic_eq</span>
             </div>
-
-            <div class="flex items-center gap-4 w-full md:w-auto justify-end">
-                <button id="recordBtn" class="m3-state-layer hidden items-center justify-center gap-2 bg-m3-error text-m3-onError px-6 py-3.5 rounded-full font-medium text-sm transition-all shadow-sm">
-                    <span class="material-symbols-rounded text-[20px]" id="recordIcon">mic</span>
-                    <span id="recordText">Rekam</span>
-                </button>
-                <!-- Prominent FAB -->
-                <button id="powerBtn" class="m3-state-layer flex items-center justify-center gap-2 bg-m3-primary text-m3-onPrimary px-8 py-4 rounded-[20px] font-medium text-base transition-all shadow-md hover:shadow-lg w-full md:w-auto">
-                    <span class="material-symbols-rounded text-2xl" id="powerIcon">play_arrow</span>
-                    <span id="powerText">Mulai Suara</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- LEFT COLUMN: CONTROLS (M3E Cards) -->
-        <div class="lg:col-span-4 flex flex-col gap-4 md:gap-6">
-            
-            <!-- Info Chips Card -->
-            <div class="bg-m3-surface rounded-[28px] p-5 flex flex-wrap items-center gap-3">
-                <div class="flex items-center gap-2 bg-m3-secondaryContainer text-m3-onSecondaryContainer px-4 py-2 rounded-lg text-sm font-medium">
-                    <span class="material-symbols-rounded text-[18px]">music_note</span>
-                    <span id="noteDisplay">C3</span>
-                </div>
-                <div class="flex items-center gap-2 bg-m3-tertiaryContainer text-m3-onTertiaryContainer px-4 py-2 rounded-lg text-sm font-medium">
-                    <span class="material-symbols-rounded text-[18px]">piano</span>
-                    <span id="chordDisplay">Unison</span>
-                </div>
-                <div class="flex items-center gap-2 bg-m3-surfaceHighest text-m3-primary px-4 py-2 rounded-lg text-sm font-medium w-full sm:w-auto justify-center">
-                    <span id="freqDisplay">130 Hz</span>
-                </div>
-            </div>
-
-            <!-- Control Sliders -->
-            <div class="bg-m3-surface rounded-[32px] p-6 flex flex-col gap-8 flex-1 shadow-sm">
-                <h2 class="font-display text-lg font-medium text-m3-secondary mb-2">Parameter Akustik</h2>
-
-                <!-- Slider 1 -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex justify-between items-center text-sm font-medium text-m3-onSurface">
-                        <span>Instrumen</span>
-                        <span id="instrumentDisplay" class="text-m3-primary">Biola</span>
-                    </div>
-                    <input type="range" id="instrumentSlider" min="0" max="2" value="0" class="m3e-slider">
-                </div>
-
-                <!-- Slider 2 -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex justify-between items-center text-sm font-medium text-m3-onSurface">
-                        <span>Kunci Dasar</span>
-                        <span id="baseKeyDisplay" class="text-m3-primary">C</span>
-                    </div>
-                    <input type="range" id="baseKeySlider" min="0" max="11" value="0" class="m3e-slider">
-                </div>
-
-                <!-- Slider 3 -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex justify-between items-center text-sm font-medium text-m3-onSurface">
-                        <span>Tangga Nada</span>
-                        <span id="scaleDisplay" class="text-m3-tertiary">Kromatik</span>
-                    </div>
-                    <input type="range" id="scaleSlider" min="0" max="9" value="0" class="m3e-slider tertiary">
-                </div>
-
-                <!-- Slider 4 -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex justify-between items-center text-sm font-medium text-m3-onSurface">
-                        <span>Jenis Akor</span>
-                        <span id="chordDisplayHeader" class="text-m3-tertiary">Unison</span>
-                    </div>
-                    <input type="range" id="chordSlider" min="0" max="6" value="0" class="m3e-slider tertiary">
-                </div>
+            <div>
+                <h1 class="font-display text-base sm:text-xl font-medium tracking-tight text-m3-primary leading-tight">Harmonic Engine</h1>
+                <p class="text-[10px] sm:text-xs font-medium text-m3-outline hidden sm:block">Material 3 Expressive UI</p>
             </div>
         </div>
 
-        <!-- RIGHT COLUMN: VISUALIZER CANVAS -->
-        <section class="lg:col-span-8 bg-m3-surface rounded-[32px] relative overflow-hidden flex flex-col min-h-[400px] lg:min-h-[500px] shadow-sm">
+        <div class="flex items-center gap-2">
+            <!-- Information Chips Header -->
+            <div class="flex items-center gap-1.5 bg-m3-surfaceHighest px-2.5 py-1 rounded-xl text-xs font-medium text-m3-primary">
+                <span id="noteDisplay">C3</span>
+                <span class="text-m3-outline">•</span>
+                <span id="freqDisplay">130 Hz</span>
+            </div>
+
+            <button id="recordBtn" class="m3-state-layer hidden items-center justify-center gap-1 bg-m3-error text-m3-onError px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-medium text-xs shadow-sm">
+                <span class="material-symbols-rounded text-[16px]" id="recordIcon">mic</span>
+                <span id="recordText" class="hidden sm:inline">Rekam</span>
+            </button>
             
-            <div id="instructionOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-m3-bg/60 backdrop-blur-sm z-20 transition-opacity duration-300 pointer-events-none">
-                <div class="bg-m3-surfaceHigh px-6 py-4 rounded-[24px] flex flex-col items-center gap-2 shadow-lg">
-                    <span class="material-symbols-rounded text-3xl text-m3-primary">touch_app</span>
-                    <p class="font-display font-medium text-center text-m3-onSurface text-sm">Sentuh Area Visualizer</p>
+            <!-- Main Audio Toggle Button -->
+            <button id="powerBtn" class="m3-state-layer flex items-center justify-center gap-1.5 bg-m3-primary text-m3-onPrimary px-4 py-2 sm:px-6 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm shadow-md hover:shadow-lg">
+                <span class="material-symbols-rounded text-lg sm:text-xl" id="powerIcon">play_arrow</span>
+                <span id="powerText">Mulai</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTROL PANEL (Compact 2x2 Grid on Mobile) -->
+    <div class="bg-m3-surface rounded-[20px] sm:rounded-[28px] p-3 sm:p-4 shrink-0 shadow-sm">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            
+            <!-- Slider 1: Instrument -->
+            <div class="bg-m3-surfaceHigh p-2 sm:p-3 rounded-2xl flex flex-col gap-1">
+                <div class="flex justify-between items-center text-[11px] sm:text-xs font-medium text-m3-onSurface">
+                    <span>Instrumen</span>
+                    <span id="instrumentDisplay" class="text-m3-primary font-bold">Biola</span>
                 </div>
+                <input type="range" id="instrumentSlider" min="0" max="2" value="0" class="m3e-slider">
             </div>
 
-            <!-- Canvas Element -->
-            <canvas id="simCanvas" class="flex-1 rounded-[32px]"></canvas>
-
-            <div class="absolute bottom-4 left-6 right-6 flex justify-between text-xs font-medium text-m3-outline pointer-events-none z-10">
-                <span id="xAxisLeftLabel" class="bg-m3-surfaceHighest px-3 py-1.5 rounded-lg">Rendah (C3)</span>
-                <span id="xAxisRightLabel" class="bg-m3-surfaceHighest px-3 py-1.5 rounded-lg">Tinggi (C6)</span>
+            <!-- Slider 2: Base Key -->
+            <div class="bg-m3-surfaceHigh p-2 sm:p-3 rounded-2xl flex flex-col gap-1">
+                <div class="flex justify-between items-center text-[11px] sm:text-xs font-medium text-m3-onSurface">
+                    <span>Kunci</span>
+                    <span id="baseKeyDisplay" class="text-m3-primary font-bold">C</span>
+                </div>
+                <input type="range" id="baseKeySlider" min="0" max="11" value="0" class="m3e-slider">
             </div>
-        </section>
 
+            <!-- Slider 3: Scale -->
+            <div class="bg-m3-surfaceHigh p-2 sm:p-3 rounded-2xl flex flex-col gap-1">
+                <div class="flex justify-between items-center text-[11px] sm:text-xs font-medium text-m3-onSurface">
+                    <span>Tangga Nada</span>
+                    <span id="scaleDisplay" class="text-m3-tertiary font-bold truncate max-w-[80px]">Chrom.</span>
+                </div>
+                <input type="range" id="scaleSlider" min="0" max="9" value="0" class="m3e-slider tertiary">
+            </div>
+
+            <!-- Slider 4: Chord -->
+            <div class="bg-m3-surfaceHigh p-2 sm:p-3 rounded-2xl flex flex-col gap-1">
+                <div class="flex justify-between items-center text-[11px] sm:text-xs font-medium text-m3-onSurface">
+                    <span>Jenis Akor</span>
+                    <span id="chordDisplayHeader" class="text-m3-tertiary font-bold truncate max-w-[80px]">Unison</span>
+                </div>
+                <input type="range" id="chordSlider" min="0" max="6" value="0" class="m3e-slider tertiary">
+            </div>
+
+        </div>
     </div>
 
-    <!-- MAIN ENGINE SCRIPT (Logika tidak berubah, hanya update styling) -->
+    <!-- VISUALIZER CANVAS (Fills Remaining Space) -->
+    <section class="bg-m3-surface rounded-[24px] sm:rounded-[32px] relative overflow-hidden flex-1 shadow-sm border border-m3-surfaceHighest/30">
+        
+        <div id="instructionOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-m3-bg/70 backdrop-blur-sm z-20 transition-opacity duration-300 pointer-events-none">
+            <div class="bg-m3-surfaceHigh px-5 py-3 rounded-[20px] flex items-center gap-2.5 shadow-lg border border-m3-outlineVariant/30">
+                <span class="material-symbols-rounded text-2xl text-m3-primary animate-bounce">touch_app</span>
+                <p class="font-display font-medium text-center text-m3-onSurface text-xs sm:text-sm">Sentuh Kanvas Untuk Memainkan Suara</p>
+            </div>
+        </div>
+
+        <!-- Canvas Element -->
+        <canvas id="simCanvas" class="w-full h-full"></canvas>
+
+        <div class="absolute bottom-2 left-3 right-3 flex justify-between text-[10px] font-medium text-m3-outline pointer-events-none z-10">
+            <span id="xAxisLeftLabel" class="bg-m3-surfaceHighest/80 backdrop-blur-md px-2.5 py-1 rounded-md text-m3-primary">Rendah (C3)</span>
+            <span id="xAxisRightLabel" class="bg-m3-surfaceHighest/80 backdrop-blur-md px-2.5 py-1 rounded-md text-m3-tertiary">Tinggi (C6)</span>
+        </div>
+    </section>
+
+    <!-- MAIN ENGINE SCRIPT -->
     <script>
         // --- Music Configuration ---
         const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const chords = [
-            { name: "Unison (Tunggal)", intervals: [0] },
-            { name: "Power Chord (5th)", intervals: [0, 7] },
+            { name: "Unison", intervals: [0] },
+            { name: "Power 5th", intervals: [0, 7] },
             { name: "Minor", intervals: [0, 3, 7] },
             { name: "Major", intervals: [0, 4, 7] },
-            { name: "Suspended 4th", intervals: [0, 5, 7] },
+            { name: "Sus4", intervals: [0, 5, 7] },
             { name: "Major 7th", intervals: [0, 4, 7, 11] },
             { name: "Minor 7th", intervals: [0, 3, 7, 10] }
         ];
         const musicalScales = [
-            { name: "Chromatic (Semua)", intervals: [0,1,2,3,4,5,6,7,8,9,10,11] },
-            { name: "Major (Ionian)", intervals: [0, 2, 4, 5, 7, 9, 11] },
-            { name: "Minor (Aeolian)", intervals: [0, 2, 3, 5, 7, 8, 10] },
+            { name: "Chromatic", intervals: [0,1,2,3,4,5,6,7,8,9,10,11] },
+            { name: "Major", intervals: [0, 2, 4, 5, 7, 9, 11] },
+            { name: "Minor", intervals: [0, 2, 3, 5, 7, 8, 10] },
             { name: "Dorian", intervals: [0, 2, 3, 5, 7, 9, 10] },
             { name: "Phrygian", intervals: [0, 1, 3, 5, 7, 8, 10] },
             { name: "Lydian", intervals: [0, 2, 4, 6, 7, 9, 11] },
             { name: "Mixolydian", intervals: [0, 2, 4, 5, 7, 9, 10] },
             { name: "Locrian", intervals: [0, 1, 3, 5, 6, 8, 10] },
-            { name: "Pentatonic Major", intervals: [0, 2, 4, 7, 9] },
-            { name: "Pentatonic Minor", intervals: [0, 3, 5, 7, 10] }
+            { name: "Penta Major", intervals: [0, 2, 4, 7, 9] },
+            { name: "Penta Minor", intervals: [0, 3, 5, 7, 10] }
         ];
 
-        // M3E Colors for particles
-        const particleColors = ['#D0BCFF', '#EFB8C8', '#CCC2DC', '#EADDFF', '#FFD8E4'];
+        // VIBRANT NEON COLOR PALETTE FOR PARTICLES
+        const particleColors = [
+            '#FF007F', // Neon Rose
+            '#00F0FF', // Cyan Neon
+            '#39FF14', // Neon Green
+            '#FFD700', // Bright Gold
+            '#FF5E00', // Electric Orange
+            '#BF00FF', // Purple Neon
+            '#00FFFF', // Aqua
+            '#FF1493'  // Deep Pink
+        ];
         const instruments = ['Biola Gesek', 'Gitar Akustik', 'Harpa'];
 
         // --- States ---
@@ -306,6 +304,7 @@
         function getFreqFromMidi(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
         function getNoteName(midi) { return `${noteNames[midi % 12]}${Math.floor(midi / 12) - 1}`; }
 
+        // --- iOS 27.1 UNLOCK COMPATIBILITY ---
         function ensureAudioReady() {
             if (!audioCtx) {
                 const AudioClass = window.AudioContext || window.webkitAudioContext;
@@ -317,21 +316,18 @@
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
-        }
 
-        const unlockAudioMobile = () => { 
-            if(audioCtx && audioCtx.state === 'running') return;
-            ensureAudioReady(); 
-            const silentOsc = audioCtx.createOscillator();
-            const silentGain = audioCtx.createGain();
-            silentGain.gain.value = 0;
-            silentOsc.connect(silentGain);
-            silentGain.connect(audioCtx.destination);
-            silentOsc.start(0);
-            silentOsc.stop(audioCtx.currentTime + 0.1);
-        };
-        document.addEventListener('touchstart', unlockAudioMobile, { once: false });
-        document.addEventListener('click', unlockAudioMobile, { once: false });
+            // Silent AudioBuffer unlock trick (Most reliable for modern iOS WebKit)
+            try {
+                const buffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start(0);
+            } catch (e) {
+                console.log("Audio unlock attempted");
+            }
+        }
 
         function createVoice() {
             const osc = audioCtx.createOscillator();
@@ -357,7 +353,6 @@
             primaryFreq = freqs[0];
 
             document.getElementById('noteDisplay').innerText = getNoteName(currentRootMidi);
-            document.getElementById('chordDisplay').innerText = chord.name;
             document.getElementById('freqDisplay').innerText = Math.round(primaryFreq) + ' Hz';
 
             const noteChanged = currentRootMidi !== lastRootMidi;
@@ -411,11 +406,10 @@
             const txt = document.getElementById('powerText');
 
             if (isRunning) {
-                // M3E Active State (Error color for stop)
                 btn.classList.replace('bg-m3-primary', 'bg-m3-error');
                 btn.classList.replace('text-m3-onPrimary', 'text-m3-onError');
                 icon.innerText = 'stop'; 
-                txt.innerText = 'Hentikan';
+                txt.innerText = 'Stop';
                 document.getElementById('instructionOverlay').classList.add('opacity-0');
                 document.getElementById('recordBtn').classList.remove('hidden');
                 document.getElementById('recordBtn').classList.add('flex');
@@ -423,7 +417,7 @@
                 btn.classList.replace('bg-m3-error', 'bg-m3-primary');
                 btn.classList.replace('text-m3-onError', 'text-m3-onPrimary');
                 icon.innerText = 'play_arrow'; 
-                txt.innerText = 'Mulai Suara';
+                txt.innerText = 'Mulai';
                 if (isRecording) toggleRecording();
                 document.getElementById('recordBtn').classList.add('hidden');
                 document.getElementById('recordBtn').classList.remove('flex');
@@ -464,12 +458,12 @@
         }
         document.getElementById('recordBtn').addEventListener('click', toggleRecording);
 
-        // --- Kanvas Fisika Partikel ---
+        // --- KANVAS FISIKA PARTIKEL (LEBIH BESAR, WARNA-WARNI & MOTION BLUR) ---
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         const container = canvas.parentElement;
         let particles = [];
-        const PARTICLE_COUNT = 300;
+        const PARTICLE_COUNT = 380; // Added more particles for excitement
 
         function resizeCanvas() {
             canvas.width = container.clientWidth;
@@ -479,21 +473,21 @@
                 particles.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
-                    vx: (Math.random() - 0.5) * 1.5,
-                    vy: (Math.random() - 0.5) * 1.5,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
                     color: particleColors[i % particleColors.length],
-                    size: window.innerWidth > 768 ? 3.5 : 2.5 // Slightly larger for M3 Expressive
+                    size: Math.random() * 5 + 4 // Much larger particle sizes (4px - 9px)
                 });
             }
         }
 
         function animate() {
-            // M3E Canvas Background (Surface matching)
-            ctx.fillStyle = '#211F26';
+            // Motion Blur Background (Creates dynamic glow trails)
+            ctx.fillStyle = 'rgba(33, 31, 38, 0.25)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const m = ((currentRootMidi % 12) + 2) * 0.15;
-            const n = Math.floor(currentRootMidi / 20) + 1;
+            const m = ((currentRootMidi % 12) + 2) * 0.18;
+            const n = Math.floor(currentRootMidi / 18) + 1;
             const pi = Math.PI;
 
             for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -507,15 +501,15 @@
                     const dx = pointerX - p.x;
                     const dy = pointerY - p.y;
                     const distSq = dx * dx + dy * dy;
-                    if (distSq < 14400 && distSq > 1) {
-                        const force = (120 - Math.sqrt(distSq)) * 0.03;
-                        fx = (dx / 120) * force * 1.8;
-                        fy = (dy / 120) * force * 1.8;
+                    if (distSq < 25000 && distSq > 1) { // Wider touch attraction radius
+                        const force = (160 - Math.sqrt(distSq)) * 0.04;
+                        fx = (dx / 160) * force * 2.2;
+                        fy = (dy / 160) * force * 2.2;
                     }
                 }
 
-                p.vx = p.vx * 0.91 + wave * 0.25 + fx + (Math.random() - 0.5) * 0.3;
-                p.vy = p.vy * 0.91 + wave * 0.25 + fy + (Math.random() - 0.5) * 0.3;
+                p.vx = p.vx * 0.92 + wave * 0.35 + fx + (Math.random() - 0.5) * 0.4;
+                p.vy = p.vy * 0.92 + wave * 0.35 + fy + (Math.random() - 0.5) * 0.4;
 
                 p.x += p.vx;
                 p.y += p.vy;
@@ -525,8 +519,8 @@
                 if (p.y < 0) { p.y = 0; p.vy *= -1; }
                 else if (p.y > canvas.height) { p.y = canvas.height; p.vy *= -1; }
 
+                // Draw Glowing Larger Particles
                 ctx.fillStyle = p.color;
-                // Draw rounded particles for M3E vibe
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
@@ -535,7 +529,7 @@
             requestAnimationFrame(animate);
         }
 
-        // --- POINTER EVENTS ---
+        // --- POINTER & TOUCH EVENTS ---
         function handlePointerMove(e) {
             const rect = canvas.getBoundingClientRect();
             pointerX = e.clientX - rect.left;
