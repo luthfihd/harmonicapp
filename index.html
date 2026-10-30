@@ -200,7 +200,7 @@
                     <span>Tangga Nada</span>
                     <span id="scaleDisplay" class="text-m3-tertiary font-bold truncate max-w-[80px]">Chrom.</span>
                 </div>
-                <input type="range" id="scaleSlider" min="0" max="9" value="0" class="m3e-slider tertiary">
+                <input type="range" id="scaleSlider" min="0" max="11" value="0" class="m3e-slider tertiary">
             </div>
 
             <!-- Slider 4: Chord -->
@@ -256,6 +256,8 @@
             { name: "Lydian", intervals: [0, 2, 4, 6, 7, 9, 11] },
             { name: "Mixolydian", intervals: [0, 2, 4, 5, 7, 9, 10] },
             { name: "Locrian", intervals: [0, 1, 3, 5, 6, 8, 10] },
+            { name: "Phr. Dominant", intervals: [0, 1, 4, 5, 7, 8, 10] },
+            { name: "Javanese", intervals: [0, 4, 5, 7, 11] },
             { name: "Penta Major", intervals: [0, 2, 4, 7, 9] },
             { name: "Penta Minor", intervals: [0, 3, 5, 7, 10] }
         ];
@@ -271,14 +273,14 @@
             '#00FFFF', // Aqua
             '#FF1493'  // Deep Pink
         ];
-        const instruments = ['Biola Gesek', 'Kalimba', 'Saxophone'];
+        const instruments = ['Biola Gesek', 'Gitar Akustik', 'Harpa'];
 
         // --- States ---
         let isRunning = false, isPointerActive = false;
         let pointerX = 0, pointerY = 0;
         let currentBaseKeyIndex = 0, currentRootMidi = 60, currentChordIndex = 0, currentScaleIndex = 0;
         let availableMidiNotes = [], primaryFreq = 130, yExpression = 0.5;
-        let currentInstrumentIndex = 0, lastRootMidi = -1, lastInstrumentIndex = -1;
+        let currentInstrumentIndex = 0, lastRootMidi = -1;
 
         // --- Audio Context & Recording ---
         let audioCtx = null, masterGain = null, activeVoices = [];
@@ -331,20 +333,17 @@
 
         function createVoice() {
             const osc = audioCtx.createOscillator();
-            const subOsc = audioCtx.createOscillator(); // Osilator ke-2 untuk tabung bambu sekunder (Angklung)
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass';
             const gainNode = audioCtx.createGain();
             gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
 
             osc.connect(filter);
-            subOsc.connect(filter); // Hubungkan osilator sekunder ke filter
             filter.connect(gainNode);
             gainNode.connect(masterGain);
             osc.start();
-            subOsc.start();
 
-            return { osc, subOsc, filter, gainNode };
+            return { osc, filter, gainNode };
         }
 
         function updateAudio() {
@@ -358,24 +357,17 @@
             document.getElementById('noteDisplay').innerText = getNoteName(currentRootMidi);
             document.getElementById('freqDisplay').innerText = Math.round(primaryFreq) + ' Hz';
 
-            const instrumentChanged = currentInstrumentIndex !== lastInstrumentIndex;
-            if (instrumentChanged) lastInstrumentIndex = currentInstrumentIndex;
-
-            const noteChanged = (currentRootMidi !== lastRootMidi) || instrumentChanged;
-            if (currentRootMidi !== lastRootMidi) lastRootMidi = currentRootMidi;
+            const noteChanged = currentRootMidi !== lastRootMidi;
+            if (noteChanged) lastRootMidi = currentRootMidi;
 
             while (activeVoices.length < targetNotes.length) activeVoices.push(createVoice());
             while (activeVoices.length > targetNotes.length) {
                 const v = activeVoices.pop();
                 v.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
-                setTimeout(() => { 
-                    v.osc.stop(); 
-                    v.subOsc.stop();
-                    v.osc.disconnect(); 
-                    v.subOsc.disconnect();
-                }, 150);
+                setTimeout(() => { v.osc.stop(); v.osc.disconnect(); }, 150);
             }
 
+            const isPlucked = currentInstrumentIndex > 0;
             const targetVol = isPointerActive ? (0.75 / targetNotes.length) : 0;
 
             activeVoices.forEach((v, i) => {
@@ -383,67 +375,27 @@
                 v.osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
 
                 if (currentInstrumentIndex === 0) { 
-                    // --- INSTRUMEN 0: REALISTIC VIOLIN (BOWED STRING WITH VIBRATO) ---
                     v.osc.type = 'sawtooth';
-                    v.subOsc.type = 'sine';
-                    
-                    const now = audioCtx.currentTime;
-                    // LFO Vibrato (Getaran halus 5.5 Hz khas gesekan biola)
-                    const vibratoRate = 5.5; 
-                    const vibratoDepth = f * 0.015; // Kedalaman vibrato 1.5% dari frekuensi
-                    const vibrato = Math.sin(now * vibratoRate * Math.PI * 2) * vibratoDepth;
-                    
-                    v.osc.frequency.setTargetAtTime(f + (isPointerActive ? vibrato : 0), now, 0.02);
-                    v.subOsc.frequency.setTargetAtTime((f * 0.5), now, 0.02); // Sub-octave hangat bodi kayu
-
-                    v.filter.type = 'lowpass';
-                    // Filter akustik kayu biola (Resonansi hangat)
-                    const violinCutoff = Math.min(6500, Math.max(400, f * (1.8 + yExpression * 3.5)));
-                    v.filter.frequency.setTargetAtTime(violinCutoff, now, 0.04);
-                    
-                    // Attack gesekan busur halus (Legato Bowing)
-                    v.gainNode.gain.setTargetAtTime(targetVol * 0.85, now, 0.05);
-
+                    v.filter.frequency.setTargetAtTime(f * (1.5 + yExpression * 4), audioCtx.currentTime, 0.03);
                 } else if (currentInstrumentIndex === 1) { 
-                    // --- INSTRUMEN 1: KALIMBA (THUMB PIANO) ---
-                    v.osc.type = 'sine'; // Dentingan bilah besi utama
-                    v.subOsc.type = 'sine'; // Harmonik tinggi bilah logam
-                    
-                    // Harmonik khas bilah besi tipis (2.76x frekuensi dasar)
-                    v.subOsc.frequency.setTargetAtTime(f * 2.76, audioCtx.currentTime, 0.005);
-                    v.filter.type = 'lowpass';
-                    
-                    if (noteChanged && isPointerActive) {
-                        const now = audioCtx.currentTime;
-                        
-                        // Envelope Petikan Jempol (Smooth Legato Transitions)
-                        v.gainNode.gain.cancelScheduledValues(now);
-                        v.gainNode.gain.setTargetAtTime(targetVol * 2.0, now, 0.005); 
-                        v.gainNode.gain.exponentialRampToValueAtTime(targetVol * 0.35, now + 0.1); 
-                        v.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.8); 
+                    v.osc.type = 'triangle';
+                    v.filter.frequency.setTargetAtTime(f * (3.0 + yExpression * 2.5), audioCtx.currentTime, 0.03);
+                } else { 
+                    v.osc.type = 'sine';
+                    v.filter.frequency.setTargetAtTime(f * (4.0 + yExpression), audioCtx.currentTime, 0.03);
+                }
 
-                        // Resonansi Filter Kalimba
-                        const kalimbaCutoff = Math.min(8000, Math.max(800, f * (4.5 + yExpression * 3)));
-                        v.filter.frequency.cancelScheduledValues(now);
-                        v.filter.frequency.setTargetAtTime(kalimbaCutoff, now, 0.01);
+                if (isPlucked) {
+                    if (noteChanged && isPointerActive) {
+                        v.gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+                        v.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                        v.gainNode.gain.linearRampToValueAtTime(targetVol * 1.5, audioCtx.currentTime + 0.015);
+                        v.gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (currentInstrumentIndex === 1 ? 1.2 : 3.0));
                     } else if (!isPointerActive) {
                         v.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04);
                     }
-
-                } else { 
-                    // --- INSTRUMEN 2: REALISTIC SAXOPHONE (PORTAMENTO SLIDE) ---
-                    v.osc.type = 'sawtooth';  // Badan suara logam kuningan
-                    v.subOsc.type = 'square'; // Gelombang segi empat untuk karakter sengau "Reed"
-                    v.subOsc.frequency.setTargetAtTime(f * 1.003, audioCtx.currentTime, 0.01); 
-                    
-                    v.filter.type = 'lowpass';
-                    
-                    const now = audioCtx.currentTime;
-                    const saxBaseCutoff = Math.min(7000, f * (2.8 + yExpression * 4.5));
-
-                    // Jika nada berubah saat slide, gunakan legato/portamento meluncur tanpa terpotong
-                    v.gainNode.gain.setTargetAtTime(targetVol * 0.9, now, 0.02);
-                    v.filter.frequency.setTargetAtTime(saxBaseCutoff, now, 0.025);
+                } else {
+                    v.gainNode.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.03);
                 }
             });
         }
