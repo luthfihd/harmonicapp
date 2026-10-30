@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>M3E Harmonic Visualizer</title>
+    <title>Harmonic Visualizer</title>
     
     <!-- PWA & Mobile Meta Tags -->
     <meta name="theme-color" content="#141218">
@@ -271,14 +271,14 @@
             '#00FFFF', // Aqua
             '#FF1493'  // Deep Pink
         ];
-        const instruments = ['Biola Gesek', 'Gitar Akustik', 'Harpa'];
+        const instruments = ['Biola Gesek', 'Kalimba', 'Saxophone'];
 
         // --- States ---
         let isRunning = false, isPointerActive = false;
         let pointerX = 0, pointerY = 0;
         let currentBaseKeyIndex = 0, currentRootMidi = 60, currentChordIndex = 0, currentScaleIndex = 0;
         let availableMidiNotes = [], primaryFreq = 130, yExpression = 0.5;
-        let currentInstrumentIndex = 0, lastRootMidi = -1;
+        let currentInstrumentIndex = 0, lastRootMidi = -1, lastInstrumentIndex = -1;
 
         // --- Audio Context & Recording ---
         let audioCtx = null, masterGain = null, activeVoices = [];
@@ -331,17 +331,20 @@
 
         function createVoice() {
             const osc = audioCtx.createOscillator();
+            const subOsc = audioCtx.createOscillator(); // Osilator ke-2 untuk tabung bambu sekunder (Angklung)
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass';
             const gainNode = audioCtx.createGain();
             gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
 
             osc.connect(filter);
+            subOsc.connect(filter); // Hubungkan osilator sekunder ke filter
             filter.connect(gainNode);
             gainNode.connect(masterGain);
             osc.start();
+            subOsc.start();
 
-            return { osc, filter, gainNode };
+            return { osc, subOsc, filter, gainNode };
         }
 
         function updateAudio() {
@@ -355,17 +358,24 @@
             document.getElementById('noteDisplay').innerText = getNoteName(currentRootMidi);
             document.getElementById('freqDisplay').innerText = Math.round(primaryFreq) + ' Hz';
 
-            const noteChanged = currentRootMidi !== lastRootMidi;
-            if (noteChanged) lastRootMidi = currentRootMidi;
+            const instrumentChanged = currentInstrumentIndex !== lastInstrumentIndex;
+            if (instrumentChanged) lastInstrumentIndex = currentInstrumentIndex;
+
+            const noteChanged = (currentRootMidi !== lastRootMidi) || instrumentChanged;
+            if (currentRootMidi !== lastRootMidi) lastRootMidi = currentRootMidi;
 
             while (activeVoices.length < targetNotes.length) activeVoices.push(createVoice());
             while (activeVoices.length > targetNotes.length) {
                 const v = activeVoices.pop();
                 v.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
-                setTimeout(() => { v.osc.stop(); v.osc.disconnect(); }, 150);
+                setTimeout(() => { 
+                    v.osc.stop(); 
+                    v.subOsc.stop();
+                    v.osc.disconnect(); 
+                    v.subOsc.disconnect();
+                }, 150);
             }
 
-            const isPlucked = currentInstrumentIndex > 0;
             const targetVol = isPointerActive ? (0.75 / targetNotes.length) : 0;
 
             activeVoices.forEach((v, i) => {
@@ -373,27 +383,49 @@
                 v.osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
 
                 if (currentInstrumentIndex === 0) { 
+                    // --- INSTRUMEN 0: BIOLA GESEK ---
                     v.osc.type = 'sawtooth';
+                    v.subOsc.type = 'sine';
+                    v.subOsc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
+                    v.filter.type = 'lowpass';
                     v.filter.frequency.setTargetAtTime(f * (1.5 + yExpression * 4), audioCtx.currentTime, 0.03);
-                } else if (currentInstrumentIndex === 1) { 
-                    v.osc.type = 'triangle';
-                    v.filter.frequency.setTargetAtTime(f * (3.0 + yExpression * 2.5), audioCtx.currentTime, 0.03);
-                } else { 
-                    v.osc.type = 'sine';
-                    v.filter.frequency.setTargetAtTime(f * (4.0 + yExpression), audioCtx.currentTime, 0.03);
-                }
+                    v.gainNode.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.03);
 
-                if (isPlucked) {
+                } else if (currentInstrumentIndex === 1) { 
+                    // --- INSTRUMEN 1: KALIMBA (THUMB PIANO) ---
+                    v.osc.type = 'sine'; // Dentingan bilah besi utama
+                    v.subOsc.type = 'sine'; // Harmonik tinggi bilah logam
+                    
+                    // Harmonik khas bilah besi tipis (2.76x frekuensi dasar)
+                    v.subOsc.frequency.setTargetAtTime(f * 2.76, audioCtx.currentTime, 0.005);
+                    v.filter.type = 'lowpass';
+                    
                     if (noteChanged && isPointerActive) {
-                        v.gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-                        v.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                        v.gainNode.gain.linearRampToValueAtTime(targetVol * 1.5, audioCtx.currentTime + 0.015);
-                        v.gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (currentInstrumentIndex === 1 ? 1.2 : 3.0));
+                        const now = audioCtx.currentTime;
+                        
+                        // Envelope Petikan Jempol (Instant Attack + Crisp Metallic Pluck)
+                        v.gainNode.gain.cancelScheduledValues(now);
+                        v.gainNode.gain.setValueAtTime(0, now);
+                        v.gainNode.gain.linearRampToValueAtTime(targetVol * 2.5, now + 0.002); // Petikan sangat tajam
+                        v.gainNode.gain.exponentialRampToValueAtTime(targetVol * 0.4, now + 0.08); // Decay dentingan logam
+                        v.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.8); // Resonance kotak kayu
+
+                        // Resonansi Filter Kalimba
+                        const kalimbaCutoff = Math.min(8000, Math.max(800, f * (4.5 + yExpression * 3)));
+                        v.filter.frequency.cancelScheduledValues(now);
+                        v.filter.frequency.setValueAtTime(kalimbaCutoff, now);
                     } else if (!isPointerActive) {
                         v.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04);
                     }
-                } else {
-                    v.gainNode.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.03);
+
+                } else { 
+                    // --- INSTRUMEN 2: SAXOPHONE ---
+                    v.osc.type = 'square';
+                    v.subOsc.type = 'sawtooth';
+                    v.subOsc.frequency.setTargetAtTime(f * 1.002, audioCtx.currentTime, 0.02);
+                    v.filter.type = 'lowpass';
+                    v.filter.frequency.setTargetAtTime(f * (2.0 + yExpression * 5), audioCtx.currentTime, 0.03);
+                    v.gainNode.gain.setTargetAtTime(targetVol * 0.85, audioCtx.currentTime, 0.03);
                 }
             });
         }
