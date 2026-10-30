@@ -482,13 +482,18 @@
                 if (!streamDestination) {
                     streamDestination = audioCtx.createMediaStreamDestination();
                     masterGain.connect(streamDestination);
-                    mediaRecorder = new MediaRecorder(streamDestination.stream);
+                    
+                    // Prioritaskan mimeType MP3 jika didukung browser, dengan fallback audio/mpeg
+                    const options = MediaRecorder.isTypeSupported('audio/mp3') ? { mimeType: 'audio/mp3' } 
+                                  : (MediaRecorder.isTypeSupported('audio/mpeg') ? { mimeType: 'audio/mpeg' } : {});
+                    
+                    mediaRecorder = new MediaRecorder(streamDestination.stream, options);
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
                     mediaRecorder.onstop = () => {
-                        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const blob = new Blob(audioChunks, { type: 'audio/mp3' });
                         const a = document.createElement('a');
                         a.href = URL.createObjectURL(blob);
-                        a.download = `Harmonic_M3E_${Date.now()}.webm`;
+                        a.download = `Harmonic_M3E_${Date.now()}.mp3`;
                         a.click();
                     };
                 }
