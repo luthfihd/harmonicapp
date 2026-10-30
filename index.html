@@ -383,13 +383,26 @@
                 v.osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
 
                 if (currentInstrumentIndex === 0) { 
-                    // --- INSTRUMEN 0: BIOLA GESEK ---
+                    // --- INSTRUMEN 0: REALISTIC VIOLIN (BOWED STRING WITH VIBRATO) ---
                     v.osc.type = 'sawtooth';
                     v.subOsc.type = 'sine';
-                    v.subOsc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
+                    
+                    const now = audioCtx.currentTime;
+                    // LFO Vibrato (Getaran halus 5.5 Hz khas gesekan biola)
+                    const vibratoRate = 5.5; 
+                    const vibratoDepth = f * 0.015; // Kedalaman vibrato 1.5% dari frekuensi
+                    const vibrato = Math.sin(now * vibratoRate * Math.PI * 2) * vibratoDepth;
+                    
+                    v.osc.frequency.setTargetAtTime(f + (isPointerActive ? vibrato : 0), now, 0.02);
+                    v.subOsc.frequency.setTargetAtTime((f * 0.5), now, 0.02); // Sub-octave hangat bodi kayu
+
                     v.filter.type = 'lowpass';
-                    v.filter.frequency.setTargetAtTime(f * (1.5 + yExpression * 4), audioCtx.currentTime, 0.03);
-                    v.gainNode.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.03);
+                    // Filter akustik kayu biola (Resonansi hangat)
+                    const violinCutoff = Math.min(6500, Math.max(400, f * (1.8 + yExpression * 3.5)));
+                    v.filter.frequency.setTargetAtTime(violinCutoff, now, 0.04);
+                    
+                    // Attack gesekan busur halus (Legato Bowing)
+                    v.gainNode.gain.setTargetAtTime(targetVol * 0.85, now, 0.05);
 
                 } else if (currentInstrumentIndex === 1) { 
                     // --- INSTRUMEN 1: KALIMBA (THUMB PIANO) ---
@@ -403,29 +416,34 @@
                     if (noteChanged && isPointerActive) {
                         const now = audioCtx.currentTime;
                         
-                        // Envelope Petikan Jempol (Instant Attack + Crisp Metallic Pluck)
+                        // Envelope Petikan Jempol (Smooth Legato Transitions)
                         v.gainNode.gain.cancelScheduledValues(now);
-                        v.gainNode.gain.setValueAtTime(0, now);
-                        v.gainNode.gain.linearRampToValueAtTime(targetVol * 2.5, now + 0.002); // Petikan sangat tajam
-                        v.gainNode.gain.exponentialRampToValueAtTime(targetVol * 0.4, now + 0.08); // Decay dentingan logam
-                        v.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.8); // Resonance kotak kayu
+                        v.gainNode.gain.setTargetAtTime(targetVol * 2.0, now, 0.005); 
+                        v.gainNode.gain.exponentialRampToValueAtTime(targetVol * 0.35, now + 0.1); 
+                        v.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.8); 
 
                         // Resonansi Filter Kalimba
                         const kalimbaCutoff = Math.min(8000, Math.max(800, f * (4.5 + yExpression * 3)));
                         v.filter.frequency.cancelScheduledValues(now);
-                        v.filter.frequency.setValueAtTime(kalimbaCutoff, now);
+                        v.filter.frequency.setTargetAtTime(kalimbaCutoff, now, 0.01);
                     } else if (!isPointerActive) {
                         v.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04);
                     }
 
                 } else { 
-                    // --- INSTRUMEN 2: SAXOPHONE ---
-                    v.osc.type = 'square';
-                    v.subOsc.type = 'sawtooth';
-                    v.subOsc.frequency.setTargetAtTime(f * 1.002, audioCtx.currentTime, 0.02);
+                    // --- INSTRUMEN 2: REALISTIC SAXOPHONE (PORTAMENTO SLIDE) ---
+                    v.osc.type = 'sawtooth';  // Badan suara logam kuningan
+                    v.subOsc.type = 'square'; // Gelombang segi empat untuk karakter sengau "Reed"
+                    v.subOsc.frequency.setTargetAtTime(f * 1.003, audioCtx.currentTime, 0.01); 
+                    
                     v.filter.type = 'lowpass';
-                    v.filter.frequency.setTargetAtTime(f * (2.0 + yExpression * 5), audioCtx.currentTime, 0.03);
-                    v.gainNode.gain.setTargetAtTime(targetVol * 0.85, audioCtx.currentTime, 0.03);
+                    
+                    const now = audioCtx.currentTime;
+                    const saxBaseCutoff = Math.min(7000, f * (2.8 + yExpression * 4.5));
+
+                    // Jika nada berubah saat slide, gunakan legato/portamento meluncur tanpa terpotong
+                    v.gainNode.gain.setTargetAtTime(targetVol * 0.9, now, 0.02);
+                    v.filter.frequency.setTargetAtTime(saxBaseCutoff, now, 0.025);
                 }
             });
         }
